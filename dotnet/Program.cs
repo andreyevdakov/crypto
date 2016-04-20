@@ -15,12 +15,46 @@ namespace CryptoDA
     {
         static void Main(string[] args)
         {
+            VerifySigning();
+
 //            CreateSignatureFile("", true, true);
 
-            NewSign();
+//            NewSign();
 //            ImportBLOB();
 
             Console.ReadKey();
+        }
+
+        private static void VerifySigning()
+        {
+            string publicKey = "<RSAKeyValue><Modulus>nufyKCsoNhhoa/gYkafiRNYOvCONnq5C2Zk9CpNUJehWXyi7V5FyiyHNn6kzal6XJGd29nFXCWaDMEd/zgrozL+NuWPuhBEfbVu7h/ugBGDRy6UZlbQVL2lvpWLqdyE/bEVSPdUduu5c3DoMqlPVlR8GHJ5LBJQIJRm+FaPKly8=</Modulus><Exponent>AQAB</Exponent></RSAKeyValue>";
+            RSACryptoServiceProvider cspV = new RSACryptoServiceProvider();
+            cspV.FromXmlString(publicKey);
+
+            string line;
+            System.IO.StreamReader file = new System.IO.StreamReader("slSigs.ini");
+            while ((line = file.ReadLine()) != null)
+            {
+                if (line.Contains('='))
+                {
+                    string fileName = line.Substring(0, line.IndexOf('='));
+                    string signStr = line.Substring(line.IndexOf('=') + 1);
+                    Console.Write(fileName + " file verification: ");
+
+                    byte[] data = ReadAllBytes(fileName);
+                    SHA512Managed sha512 = new SHA512Managed();
+                    byte[] hash = sha512.ComputeHash(data);
+                    byte[] sign = Convert.FromBase64String(signStr);
+                    bool check = cspV.VerifyHash(hash, CryptoConfig.MapNameToOID("SHA512"), sign);
+
+                    if (check)
+                        Console.WriteLine("true");
+                    else
+                        Console.WriteLine("false");
+                }
+
+            }
+            file.Close();
         }
 
         private static void ImportBLOB()
@@ -36,9 +70,6 @@ namespace CryptoDA
 
         private static void NewSign()
         {
-//            string s = "MIICXQIBAAKBgQDcF8RUfEWAPOv1blmrVB1mdapZktnwY6MXFCqBuZIe7WMKDTuPfDXHSc5t+DKivSfizirZ6AbLkU6bvt8x4buePoQno9VEcQcmSTxYs3nBfFzSTLhK9NpV08XAaZo11CIWW/et82kfhAMDHetCMPCCAjY/3EAKSeQuabOMl7Tg0wIDAQABAoGBAJsJLuZoh7i2sWw4qHeUkAU9u5rPZC/+r8KxFOQ+qRyaEdrhyWPgli1k40H5xQl3/2G34t2OoULCf8IcKTMFFNgsIiykmjZX5xpwD+P8JOw5LNd0yvfh8ZPFLZRIG/xZLaAVY6zrKPsDy//iVBFnW3hMmRu6YF7iso97fhpGiP2hAkEA82neb9Z7YLRTERP8sMeOr9455m02qtETZ3hESAkGN678ejdvrTpoceqrvOuvRddJy4P2yqLUOrnc12kJkqAHIwJBAOd5Mgk1VFyaQhHMfspmg4bx1bSHqetTMmdqUWrNgtQ1QKvbdUBdsbQ8HEZlzbDfj6m/pG5QlZrWqS0dA4BkMpECQCdt5tJG9AVeMHZ7vlsEeGCUptxkpI5W/8Wq/aSNkaxDdDJ3+GcfJvwM/3TC2Ml/bjzBS6DXb3lz0goywZI2yfECQQC3mQu0/hXR9ZDeKUOQKsu8Z2lIbiq6uxzJpiy5+BQDWdHX/pP739UpzlvnAqyp1ElRLO6xiT2AuS8q106FsfPhAkBX0P3fUt0yxGqGNz9aZ1r5uWrX7mmRW4NgnmlZq6E6wjNcBmzHmb/JXotukiYwVDMaU94k79IylyafvERrtKPw";
-//            RSACryptoServiceProvider csp = CreateRsaProviderFromPrivateKey(s);
-
             RSACryptoServiceProvider csp = new RSACryptoServiceProvider();
             byte[] key = GeyKeyData("slsrvmgr.ske");
             csp.ImportCspBlob(key);
@@ -48,7 +79,6 @@ namespace CryptoDA
             byte[] data = ReadAllBytes("SLBoost.ini");
 
             byte[] hash = sha512.ComputeHash(data);
-
 
             // Sign the hash
             byte[] res = csp.SignHash(hash, CryptoConfig.MapNameToOID("SHA512"));
@@ -165,83 +195,6 @@ namespace CryptoDA
                 }
             }
         }
-
-
-        private static RSACryptoServiceProvider CreateRsaProviderFromPrivateKey(string privateKey)
-        {
-            var privateKeyBits = System.Convert.FromBase64String(privateKey);
-
-            var RSA = new RSACryptoServiceProvider();
-            var RSAparams = new RSAParameters();
-
-            using (BinaryReader binr = new BinaryReader(new MemoryStream(privateKeyBits)))
-            {
-                byte bt = 0;
-                ushort twobytes = 0;
-                twobytes = binr.ReadUInt16();
-                if (twobytes == 0x8130)
-                    binr.ReadByte();
-                else if (twobytes == 0x8230)
-                    binr.ReadInt16();
-                else
-                    throw new Exception("Unexpected value read binr.ReadUInt16()");
-
-                twobytes = binr.ReadUInt16();
-                if (twobytes != 0x0102)
-                    throw new Exception("Unexpected version");
-
-                bt = binr.ReadByte();
-                if (bt != 0x00)
-                    throw new Exception("Unexpected value read binr.ReadByte()");
-
-                RSAparams.Modulus = binr.ReadBytes(GetIntegerSize(binr));
-                RSAparams.Exponent = binr.ReadBytes(GetIntegerSize(binr));
-                RSAparams.D = binr.ReadBytes(GetIntegerSize(binr));
-                RSAparams.P = binr.ReadBytes(GetIntegerSize(binr));
-                RSAparams.Q = binr.ReadBytes(GetIntegerSize(binr));
-                RSAparams.DP = binr.ReadBytes(GetIntegerSize(binr));
-                RSAparams.DQ = binr.ReadBytes(GetIntegerSize(binr));
-                RSAparams.InverseQ = binr.ReadBytes(GetIntegerSize(binr));
-            }
-
-            RSA.ImportParameters(RSAparams);
-            return RSA;
-        }
-
-        private static int GetIntegerSize(BinaryReader binr)
-        {
-            byte bt = 0;
-            byte lowbyte = 0x00;
-            byte highbyte = 0x00;
-            int count = 0;
-            bt = binr.ReadByte();
-            if (bt != 0x02)
-                return 0;
-            bt = binr.ReadByte();
-
-            if (bt == 0x81)
-                count = binr.ReadByte();
-            else
-                if (bt == 0x82)
-                {
-                    highbyte = binr.ReadByte();
-                    lowbyte = binr.ReadByte();
-                    byte[] modint = { lowbyte, highbyte, 0x00, 0x00 };
-                    count = BitConverter.ToInt32(modint, 0);
-                }
-                else
-                {
-                    count = bt;
-                }
-
-            while (binr.ReadByte() == 0x00)
-            {
-                count -= 1;
-            }
-            binr.BaseStream.Seek(-1, SeekOrigin.Current);
-            return count;
-        }
-
 
     }
 }
