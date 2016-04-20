@@ -1,8 +1,8 @@
 var crypto = require('crypto');
 var fs = require('fs');
 
-var privatePem = fs.readFileSync('key_rsa.pem');
-var publicPem = fs.readFileSync('cert_rsa.pem');
+var privatePem = fs.readFileSync('key.pem');
+var publicPem = fs.readFileSync('cert.pem');
 var key = privatePem.toString();
 var pubkey = publicPem.toString();
 
@@ -20,7 +20,7 @@ var result = verify.verify(pubkey, sig, 'base64');
 console.log('verification: ', result);
 
 /*
-var pem = fs.readFileSync('key_rsa.pem');
+var pem = fs.readFileSync('key.pem');
 var key = pem.toString('ascii');
 console.log(key);
 console.log(key.length);
