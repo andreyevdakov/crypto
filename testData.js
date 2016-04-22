@@ -5,6 +5,6 @@ module.exports = {
         "C2": 2
     },
     "Array": [
-        "a1", "a2"
+        "a1", "a22", "a3"
     ]
 }
